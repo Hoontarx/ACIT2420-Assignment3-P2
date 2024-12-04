@@ -1,24 +1,53 @@
 # ACIT2420-Assignment3
 
-## Task 1 - Creating New System User
-We are going to start by creating a new system user so we can store and run the generate_index script file inside their home directory in their bin folder.
-
-First we are going to create the new system user using useradd, specifying their home directory and an appropriate shell for the new system user.
+## Creating New Droplets
+On the digital ocean website:
+1. Click **Create** > **Droplets**
+2. Click **San Francisco**
+3. Select **Datacenter 3 * SFO3** (or whatever region is closest to you)
+4. Click **Custom images**
+5. Upload and Select **Arch Linux cloudimg** ending with **.qcow2**
+6. Select **Premium AMD** > **$7/mo**
+7. Select a **SSH Key**
+8. Increase Droplet quantity to **2**
+9. Enter a **Hostname**
+10. Type **web** in the tag textbox
+11. Click **Create Droplet**
+---
+## Creating A Load Balancer
+On the digital ocean website:
+1. Click **Create**
+2. Click **Load Balancers**
+3. Select **Regional**
+4. Select **San Francisco SFO3**
+5. Select **External (Public)**
+6. Enter the **web** tag
+7. Click **Create Load Balancer**
+---
+## Creating New System User
+Next, we will create the webgen user in the two droplets we just made. This will be a system user that we will use for the purpose of running the nginx server.
 
 You can run the following:
 ```bash
-sudo useradd -r -m -d /var/lib/webgen -s /usr/sbin/nologin
+sudo useradd -r -m -d /var/lib/webgen -s /usr/sbin/nologin webgen
 ```
 
 Now that we have the new user, we are going to add the necessary file structure to their home directory:
 ```bash
 sudo mkdir -p /var/lib/webgen/bin
 sudo mkdir -p /var/lib/webgen/HTML
+sudo mkdir -p /var/lib/webgen/documents
 ```
 
 We will now copy the script file into the webgen users home directory in their bin folder:
 ```bash
 sudo cp /path/of/script/file /var/lib/webgen/bin
+```
+
+Also, add two test files to the documents folder. These files just need to contain dummy text and make sure the text is different in both files.
+```bash
+sudo nvim /var/lib/webgen/documents/file-one
+sudo nvim /var/lib/webgen/documents/file-two
 ```
 
 Now that webgens home directory is fully set up, we need to change the ownership to webgen:
@@ -28,7 +57,7 @@ sudo chown -R webgen:webgen /var/lib/webgen
 
 This was done as creating a new system user allows for everything to be run with only the necessary privileges, and it gives us a clean working directory to easily manage the files.
 
-## Task 2 - Creating .service & .timer Files
+## Creating .service & .timer Files
 For the second task, we are going to be creating a .service file and a .timer file that will run our script automatically everyday at 5am.
 
 First lets create the generate-index.service file:
@@ -120,7 +149,7 @@ sudo journalctl -u generate-index.service
 ```bash
 sudo journalctl -u generate-index.timer
 ```
-## Task 3 - Setting Up nginx Config
+## Setting Up Nginx Config
 Now we will be setting up an nginx server that will run using the webgen user.
 
 If you don't have nginx installed you can run:
@@ -153,6 +182,13 @@ server {
 
 	location / {
 		try_files $uri $uri/ =404;
+	}
+
+	location /documents {
+		alias /var/lib/webgen/documents;
+		autoindex on;
+		autoindex_exact_size off;
+		autoindex_localtime on;
 	}
 }
 ```
@@ -221,7 +257,7 @@ If you want or need more detail, run the following:
 ```bash
 sudo journalctl -u nginx
 ```
-## Task 4 - Setting Up ufw
+## Setting Up ufw
 Now that the nginx server is fully up and running, we will be setting up a firewall with ufw.
 
 If ufw isn't installed on your system, you can run:
@@ -252,6 +288,3 @@ You can check the status of the firewall with the following:
 ```bash
 sudo ufw status verbose
 ```
-
-# Notes:
-When adding the user for additional system information, I used whoami assuming it would just show the current user, but I guess since the script is owned by webgen it shows webgen as the user? or maybe it's because the nginx server is set to webgen?
