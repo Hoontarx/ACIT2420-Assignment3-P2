@@ -1,0 +1,68 @@
+#!/bin/bash
+# This script will create a new user with the necessary file structure and permissions
+# It will also move all the necessary files to the user's home directory and move the config files to the correct location
+
+if [ "$EUID" -ne 0 ]
+  then echo "Please run as root"
+  exit
+fi
+
+useradd -r -m -d /var/lib/webgen -s /usr/sbin/nologin webgen
+
+mkdir -p /var/lib/webgen/bin
+
+mkdir -p /var/lib/webgen/HTML
+
+mkdir -p /var/lib/webgen/documents
+
+if [ ! -d /var/lib/webgen/bin ]; then
+    echo "Directory /var/lib/webgen/bin does not exist"
+    exit 1
+fi
+
+if [ ! -d /var/lib/webgen/documents ]; then
+    echo "Directory /var/lib/webgen/documents does not exist"
+    exit 1
+fi
+
+mv generate_index /var/lib/webgen/bin
+
+mv file-one /var/lib/webgen/documents
+
+mv file-two /var/lib/webgen/documents
+
+chmod +x /var/lib/webgen/bin/generate_index
+
+chown -R webgen:webgen /var/lib/webgen
+
+mv generate-index.service /etc/systemd/system/
+
+mv generate-index.timer /etc/systemd/system/
+
+systemctl daemon-reload
+
+systemctl start generate-index.service
+
+systemctl enable generate-index.service
+
+systemctl start generate-index.timer
+
+systemctl enable generate-index.timer
+
+pacman -Syu nginx
+
+mkdir /etc/nginx/sites-available
+
+mkdir /etc/nginx/sites-enabled
+
+mv server-block.conf /etc/nginx/sites-available/
+
+mv nginx.conf /etc/nginx/
+
+ln -s /etc/nginx/sites-available/server-block.conf /etc/nginx/sites-enabled/server-block.conf
+
+systemctl daemon-reload
+
+systemctl start nginx
+
+systemctl enable nginx
